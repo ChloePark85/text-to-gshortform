@@ -1,0 +1,16 @@
+__pycache__
+*.pyc
+.DS_Store
+*.log
+*.out
+*.err
+*.txt
+*.csv
+*.xlsx
+*.xls
+*.db
+*.sqlite3
+.env
+tgshortvnv/
+venv/
+
