@@ -1,8 +1,13 @@
+import json
+from elevenlabs import VoiceSettings
+from elevenlabs.client import ElevenLabs
+from config import ELEVENLABS_API_KEY, OPENAI_API_KEY
 from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
-from config import OPENAI_API_KEY
-from crewai_tools import tool
+import uuid
+
+client = ElevenLabs(api_key=ELEVENLABS_API_KEY)
 
 llm = ChatOpenAI(openai_api_key=OPENAI_API_KEY, temperature=0.9)
 
@@ -22,7 +27,6 @@ prompt_template = PromptTemplate(
 
 script_chain = LLMChain(llm=llm, prompt=prompt_template)
 
-@tool
 def generate_script(keywords: str) -> str:
     """주어진 키워드를 기반으로 300글자 내외의 막장 단편 소설 스크립트를 생성합니다."""
     try:
@@ -33,3 +37,35 @@ def generate_script(keywords: str) -> str:
         return result
     except Exception as e:
         return f"스크립트 생성 중 오류 발생: {str(e)}"
+
+def text_to_speech(input_str: str) -> str:
+    """주어진 텍스트와 voice_id를 받아 음성으로 변환하고 파일 경로를 반환합니다."""
+    try:
+        # input_str은 JSON 형식의 문자열로, text와 voice_id를 포함합니다.
+        input_dict = json.loads(input_str)
+        text = input_dict['text']
+        voice_id = input_dict['voice_id']
+
+        response = client.text_to_speech.convert(
+            voice_id=voice_id,
+            output_format="mp3_22050_32",
+            text=text,
+            model_id="eleven_turbo_v2_5",
+            voice_settings=VoiceSettings(
+                stability=0.0,
+                similarity_boost=1.0,
+                style=0.0,
+                use_speaker_boost=True,
+            ),
+        )
+
+        save_file_path = f"{uuid.uuid4()}.mp3"
+
+        with open(save_file_path, "wb") as f:
+            for chunk in response:
+                if chunk:
+                    f.write(chunk)
+
+        return save_file_path
+    except Exception as e:
+        return f"음성 생성 중 오류 발생: {str(e)}"

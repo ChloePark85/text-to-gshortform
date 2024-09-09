@@ -1,5 +1,5 @@
 from crewai import Task
-from agents import scriptwriter
+from agents import scriptwriter, soundengineer
 
 def create_script_task(keywords):
     return Task(
@@ -17,6 +17,20 @@ def create_script_task(keywords):
         
         결과는 반드시 300글자(공백 포함) 내외여야 합니다.
         """,
+        agent=scriptwriter,
         expected_output="약 300글자 분량의 과장되고 말도 안 되는 짧은 단편 소설 형식의 막장 스크립트",
-        agent=scriptwriter
+    )
+
+def create_tts_task(script, voice_id):
+    return Task(
+        description=f"""
+        주어진 스크립트를 음성으로 변환하세요.
+        
+        스크립트: {script}
+        선택된 음성 ID: {voice_id}
+        
+        text_to_speech 함수를 사용하여 스크립트를 음성으로 변환하고, 생성된 오디오 파일의 경로를 반환하세요.
+        """,
+        agent=soundengineer,
+        expected_output="생성된 오디오 파일 mp3",
     )
