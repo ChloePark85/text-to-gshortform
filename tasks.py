@@ -1,5 +1,5 @@
 from crewai import Task
-from agents import scriptwriter, soundengineer
+from agents import scriptwriter, soundengineer, image_generation_agent
 
 def create_script_task(keywords):
     return Task(
@@ -33,4 +33,24 @@ def create_tts_task(script, voice_id):
         """,
         agent=soundengineer,
         expected_output="생성된 오디오 파일 mp3",
+    )
+
+def generate_image_task(script):
+    return Task(
+        description=f"""
+        주어진 스크립트를 바탕으로 이미지를 생성합니다.
+        
+        스크립트: {script}
+        
+        다음 지침을 따라주세요:
+        1. 눈에 띄는 캐릭터를 표현하세요.
+        2. 디자인이 멋지고 잘 설계되어야 합니다.
+        3. 이미지에 대화 버블이나 텍스트를 포함하지 마세요.
+        4. 이미지는 짧은 형식 비디오 썸네일에 적합해야 합니다.
+        5. 시각적으로 매력적이고 매력적인 장면을 만드세요.
+        
+        결과로 생성된 이미지의 파일 경로를 문자열로 반환하세요.
+        """,
+        agent=image_generation_agent,
+        expected_output="생성된 이미지 파일의 경로 (문자열)",
     )

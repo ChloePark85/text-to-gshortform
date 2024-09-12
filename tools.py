@@ -6,8 +6,14 @@ from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 import uuid
+import requests
+from PIL import Image
+from io import BytesIO
+from openai import OpenAI
+import os
 
-client = ElevenLabs(api_key=ELEVENLABS_API_KEY)
+elevenlabs_client = ElevenLabs(api_key=ELEVENLABS_API_KEY)
+openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
 llm = ChatOpenAI(openai_api_key=OPENAI_API_KEY, temperature=0.9)
 
@@ -46,7 +52,7 @@ def text_to_speech(input_str: str) -> str:
         text = input_dict['text']
         voice_id = input_dict['voice_id']
 
-        response = client.text_to_speech.convert(
+        response = elevenlabs_client.text_to_speech.convert(
             voice_id=voice_id,
             output_format="mp3_22050_32",
             text=text,
@@ -59,13 +65,71 @@ def text_to_speech(input_str: str) -> str:
             ),
         )
 
-        save_file_path = f"{uuid.uuid4()}.mp3"
-
+        save_file_path = os.path.join(os.getcwd(), f"{uuid.uuid4()}.mp3")
         with open(save_file_path, "wb") as f:
             for chunk in response:
                 if chunk:
                     f.write(chunk)
 
-        return save_file_path
+        if os.path.exists(save_file_path):
+            return save_file_path
+        else:
+            return "오디오 파일 생성 실패"
     except Exception as e:
         return f"음성 생성 중 오류 발생: {str(e)}"
+    
+def generate_image(prompt: str) -> str:
+    """
+    DALL-E를 사용하여 주어진 프롬프트에 기반한 이미지를 생성합니다.
+    """
+    # 프롬프트를 더 일반적이고 중립적으로 수정
+    prompt = f"""Create a stylish illustration featuring an attractive character based on the following scene: {prompt}. 
+Key points:
+- The character should be visually appealing and well-designed
+- Use a sophisticated illustration style
+- Do not include any speech bubbles or text in the image
+- The image should be suitable for a short-form video thumbnail
+- Focus on creating a visually striking and engaging scene
+"""
+    
+    response = openai_client.images.generate(
+            model="dall-e-3",
+            prompt=prompt,
+            size="1024x1024",
+            quality="standard",
+            n=1,
+        )
+
+    image_url = response.data[0].url
+    image_response = requests.get(image_url)
+    image = Image.open(BytesIO(image_response.content))
+        
+    # 이미지를 2:3 비율로 조정
+    width, height = image.size
+    new_height = int(width * 3 / 2)
+    
+    # 새 이미지 생성 (검은색 배경)
+    new_image = Image.new('RGB', (width, new_height), color='black')
+    
+    # 원본 이미지를 새 이미지의 중앙에 붙여넣기
+    paste_y = (new_height - height) // 2
+    new_image.paste(image, (0, paste_y))
+    
+    # 이미지를 파일로 저장
+    save_dir = "generated_images"
+    os.makedirs(save_dir, exist_ok=True)
+    save_path = os.path.join(save_dir, f"generated_image_{uuid.uuid4()}.png")
+    new_image.save(save_path)
+    
+    print(f"Debug - Generated image path: {save_path}")  # 디버그 출력
+    return save_path
+
+def add_background(image, target_ratio=2/3):
+    """이미지에 검은색 배경을 추가하여 2:3 비율로 만듭니다."""
+    width, height = image.size
+    new_height = int(width / target_ratio)
+    result = Image.new('RGB', (width, new_height), color='black')
+    paste_y = (new_height - height) // 2
+    result.paste(image, (0, paste_y))
+    
+    return result
